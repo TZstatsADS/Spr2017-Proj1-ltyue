@@ -1,5 +1,5 @@
 ---
-title: "Why does Trump be so tough after winning the election"
+title: "Trump's twitter tells us the other side of his speeches"
 output:
   html_document: default
   html_notebook: default
@@ -197,7 +197,6 @@ tweets <- trump_tweets_df %>%
 select(id, statusSource, text, created) %>%
 extract(statusSource, "source", "Twitter for (.*?)<") %>%
 filter(source %in% c("Android"))
-head(tweets)
 ```
 
 Let us look at the emotion code distribution of Trump's nomination speeces:
@@ -236,5 +235,40 @@ ggplot(data = df, mapping = aes(x = x, y = y,fill=x)) + geom_bar(stat= 'identity
 ```
 From both the plot and the statistics, it's not difficult to find that negative words play the most imporatnt role in all his twitters. Different from speeches, twitters are more reliable and direct which may be more close to the truth. 
 
+We then try to be more obviously showing the outcomes:
+```{r,message=FALSE, warning=FALSE}
+library(tm)
+library(wordcloud)
+library(RColorBrewer)
 
+wordFreq2<-wordFreq/nrow(tweet_words)
+wordcloud(tweet_words$word, scale=c(5,0.5),
+          max.words=100,
+          min.freq=3,
+          random.order=FALSE,
+          rot.per=0.3,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Blues"))
+
+```
+
+Seeing from the wordcloud clearly, our president seems to be interested in Hillary very much. Based on what we've already known, he mentioned obama in his inaugral speeches for many times. So in this case, it seems that Trump may be interested in both his components and his former occupancy all the time.
+
+And what he talks on twitter seems relevant with his needs. That means, when he's going to make nomination speeches or other important attendings, he will become more active in his twitter account.
+
+```{r}
+date_express <- "^[0-9]{4}-[0-9]{2}-[0-9]{2}"
+head(grep(trump_tweets_df$created, pattern = date_express))
+date<-grep(trump_tweets_df$created, pattern = date_express, value = TRUE)
+date1<-gsub(" [0-9]{2}:[0-9]{2}:[0-9]{2}","",date)
+dateFreq <-sort(table(tolower(date1)),decreasing = TRUE)
+y<-dateFreq
+plot(y,type="l",main="Created date",ylab="Freq",xla="Date")
+
+```
+We can see that Trump's Twitter become more alive several days before his speeches. And obviously, he becomes more talkative on his social website in 2016 compared with former. Periods when he sent twitters most frequently was the time he's trying to win the spport from all states and making nomination speeches.
+
+#step5:Conclusions
+Stories from twitter actually tells us more behind the president speeches. We can actually pay more attention to twitter to learn a more colorful Trump.
 
