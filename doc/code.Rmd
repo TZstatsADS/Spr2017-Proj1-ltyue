@@ -144,7 +144,7 @@ sentence.list=
 
 #step3: Elementary analysis of Trump and his speeches.
 Firstly, we just focus on the length of speeches. We built beeswarm and bxplot to show the distribution of the mainly lenghth of all presidents.
-```{r}
+```{r echo=FALSE}
 sel.comparison=c("DonaldJTrump","JohnMcCain", "GeorgeBush", "MittRomney", "GeorgeWBush",
                  "RonaldReagan","AlbertGore,Jr", "HillaryClinton","JohnFKerry", 
                  "WilliamJClinton","HarrySTruman", "BarackObama", "LyndonBJohnson",
@@ -163,7 +163,9 @@ sentence.list.sel$FileOrdered=reorder(sentence.list.sel$File,
                                   sentence.list.sel$word.count, 
                                   mean, 
                                   order=T)
+```
 
+```{r}
 beeswarm(word.count~FileOrdered, 
          data=sentence.list.sel,
          horizontal = FALSE, 
