@@ -1,0 +1,240 @@
+---
+title: "Why does Trump be so tough after winning the election"
+output:
+  html_document: default
+  html_notebook: default
+---
+#step1: related r packages
+Belowed are required r packages.
+```{r,message=FALSE, warning=FALSE}
+library("rvest")
+library("tibble")
+library("qdap")
+library("sentimentr")
+library("gplots")
+library("dplyr")
+library("tm")
+library("syuzhet")
+library("factoextra")
+library("beeswarm")
+library("scales")
+library("RColorBrewer")
+library("RANN")
+library("tm")
+library("topicmodels")
+library("openssl")
+library("purrr")
+library("twitteR")
+library("httr")
+library("devtools")
+library("base64enc")
+library("tidyr")
+library("tidytext")
+library("stringr")
+
+source("../lib/plotstacked.R")
+source("../lib/speechFuncs.R")
+```
+
+
+#setp2:basic data preparation
+
+We will use more speeches made by Trump. We treat these speeches all as nomination speeches and our researches will simply focus on nomination speeches more. That is because that I prefer to believe that more speeches and more data can tell us the truth rather than only depending on the inaugral speeches.
+In addition, inaugral speeches sometimes can be a little bit official which may bring some huge errors to our researches.
+
+```{r,message=FALSE, warning=FALSE}
+### Inauguaral speeches
+main.page <- read_html(x = "http://www.presidency.ucsb.edu/inaugurals.php")
+# Get link URLs
+# f.speechlinks is a function for extracting links from the list of speeches. 
+inaug=f.speechlinks(main.page)
+
+#head(inaug)
+as.Date(inaug[,1], format="%B %e, %Y")
+inaug=inaug[-nrow(inaug),] # remove the last line, irrelevant due to error.
+inaug.list=read.csv("../data/inauglist.csv", stringsAsFactors = FALSE)
+
+###nomination speeches
+main.page=read_html("http://www.presidency.ucsb.edu/nomination.php")
+# Get link URLs
+nomin <- f.speechlinks(main.page)
+nomin.list=read.csv("../data/nominlist.csv", stringsAsFactors = FALSE)
+
+#### Farewell speeches
+main.page=read_html("http://www.presidency.ucsb.edu/farewell_addresses.php")
+# Get link URLs
+farewell <- f.speechlinks(main.page)
+farewell.list=read.csv("../data/farewelllist.csv", stringsAsFactors = FALSE)
+
+speech.list=rbind(inaug.list, nomin.list, farewell.list)
+speech.list$type=c(rep("inaug", nrow(inaug.list)),
+                   rep("nomin", nrow(nomin.list)),
+                   rep("farewell", nrow(farewell.list)))
+speech.url=rbind(inaug, nomin, farewell)
+speech.list=cbind(speech.list, speech.url)
+
+speech.list$fulltext=NA
+for(i in seq(nrow(speech.list))) {
+  text <- read_html(speech.list$urls[i]) %>% # load the page
+    html_nodes(".displaytext") %>% # isloate the text
+    html_text() # get the text
+  speech.list$fulltext[i]=text
+  # Create the file name
+  filename <- paste0("../data/", 
+                     speech.list$type[i],
+                     speech.list$File[i], "-", 
+                     speech.list$Term[i], ".txt")
+  sink(file = filename) %>% # open file to write 
+  cat(text)  # write the file
+  sink() # close the file
+}
+speech1=paste(readLines("../data/SpeechDonaldTrump-NA.txt", 
+                  n=-1, skipNul=TRUE),
+              collapse=" ")
+speech2=paste(readLines("../data/SpeechDonaldTrump-NA2.txt", 
+                  n=-1, skipNul=TRUE),
+              collapse=" ")
+speech3=paste(readLines("../data/PressDonaldTrump-NA.txt", 
+                  n=-1, skipNul=TRUE),
+              collapse=" ")
+speech4=paste(readLines("../data/Trump3.txt", 
+                  n=-1, skipNul=TRUE),
+              collapse=" ")
+
+Trump.speeches=data.frame(
+  President=rep("Donald J. Trump", 4),
+  File=rep("DonaldJTrump", 4),
+  Term=rep(0, 4),
+  Party=rep("Republican", 4),
+  Date=c("August 31, 2016", "September 7, 2016", "January 11, 2017","July 21, 2016"),
+  Words=c(word_count(speech1), word_count(speech2), word_count(speech3), word_count(speech4)),
+  Win=rep("yes", 4),
+  type=rep("nomin", 4),
+  links=rep(NA, 4),
+  urls=rep(NA, 4),
+  fulltext=c(speech1, speech2, speech3, speech4)
+)
+names(speech.list)[1]='President'
+speech.list=rbind(speech.list, Trump.speeches)
+
+sentence.list=NULL
+for(i in 1:nrow(speech.list)){
+  sentences=sent_detect(speech.list$fulltext[i],
+                        endmarks = c("?", ".", "!", "|",";"))
+  if(length(sentences)>0){
+    emotions=get_nrc_sentiment(sentences)
+    word.count=word_count(sentences)
+    # colnames(emotions)=paste0("emo.", colnames(emotions))
+    # in case the word counts are zeros?
+    emotions=diag(1/(word.count+0.01))%*%as.matrix(emotions)
+    sentence.list=rbind(sentence.list, 
+                        cbind(speech.list[i,-ncol(speech.list)],
+                              sentences=as.character(sentences), 
+                              word.count,
+                              emotions,
+                              sent.id=1:length(sentences)
+                              )
+    )
+  }
+}
+sentence.list=
+  sentence.list%>%
+  filter(!is.na(word.count)) 
+```
+
+#step3: Elementary analysis of Trump and his speeches.
+Firstly, we just focus on the length of speeches. We built beeswarm and bxplot to show the distribution of the mainly lenghth of all presidents.
+```{r}
+sel.comparison=c("DonaldJTrump","JohnMcCain", "GeorgeBush", "MittRomney", "GeorgeWBush",
+                 "RonaldReagan","AlbertGore,Jr", "HillaryClinton","JohnFKerry", 
+                 "WilliamJClinton","HarrySTruman", "BarackObama", "LyndonBJohnson",
+                 "GeraldRFord", "JimmyCarter", "DwightDEisenhower", "FranklinDRoosevelt",
+                 "HerbertHoover","JohnFKennedy","RichardNixon","WoodrowWilson", 
+                 "AbrahamLincoln", "TheodoreRoosevelt", "JamesGarfield", 
+                 "JohnQuincyAdams", "UlyssesSGrant", "ThomasJefferson",
+                 "GeorgeWashington", "WilliamHowardTaft", "AndrewJackson",
+                 "WilliamHenryHarrison", "JohnAdams")
+
+sentence.list.sel=filter(sentence.list, 
+                        type=="nomin", Term==1, File%in%sel.comparison)
+sentence.list.sel$File=factor(sentence.list.sel$File)
+
+sentence.list.sel$FileOrdered=reorder(sentence.list.sel$File, 
+                                  sentence.list.sel$word.count, 
+                                  mean, 
+                                  order=T)
+
+beeswarm(word.count~FileOrdered, 
+         data=sentence.list.sel,
+         horizontal = FALSE, 
+         pch=16, col=alpha(brewer.pal(9, "Set1"), 0.6), 
+         cex=0.55, cex.axis=0.8, cex.lab=0.8,
+         spacing=5/nlevels(sentence.list.sel$FileOrdered),
+         las=2, xlab="", ylab="Number of words in a sentence.",
+         main="Nomination speeches")
+bxplot(word.count~FileOrdered, data = sentence.list.sel,add=TRUE)
+```
+We can see clearly that almost all the presidents prefer shorter sentences compared with longer ones. Trump ranked no.5 in all candidates. But honestly, these results do not provide us the information we need.
+
+So we move on to the following steps:
+We suppose that longer sentences in speeches actually contain more useful information and can bring more values to our researches.
+```{r}
+sentence.list%>%
+  filter(File=="DonaldJTrump", 
+         type=="nomin", 
+         word.count<=10 & word.count>=5)%>%
+  select(sentences)%>%sample_n(10)
+```
+We can find that some informative words hide in these longer sentences, but they may be shaded by some complex decorative words. That is to say, sometimes, these public speeches cannot give us precise model or conclusions if we depend on them only. Here, we try to realize our goal by reaching out twitter data.
+
+#step4: Deepenig exploration of twitter 
+Surveys conducted by David Robinson confirmed us that the twitter sent out through Android actually has a bigger probabilities from himself rather than his teams.
+```{r}
+load(url("http://varianceexplained.org/files/trump_tweets_df.rda"))
+head(trump_tweets_df)
+
+tweets <- trump_tweets_df %>%
+select(id, statusSource, text, created) %>%
+extract(statusSource, "source", "Twitter for (.*?)<") %>%
+filter(source %in% c("Android"))
+head(tweets)
+```
+
+Let us look at the emotion code distribution of Trump's nomination speeces:
+```{r}
+f.plotsent.len(In.list=sentence.list, InFile="DonaldJTrump", 
+               InType="nomin", InTerm=1, President="Donald Trump")
+```
+We can find that some code colors appear on the image. So, let's look at these "cold colors" more closely through twitter statistics.
+
+```{r}
+reg <- "([^A-Za-z\\d#@']|'(?![A-Za-z\\d#@]))"
+tweet_words <- tweets %>%
+  filter(!str_detect(text, '^"')) %>%
+  mutate(text = str_replace_all(text, "https://t.co/[A-Za-z\\d]+|&", "")) %>%
+  unnest_tokens(word, text, token = "regex", pattern = reg) %>%
+  filter(!word %in% stop_words$word,
+         str_detect(word, "[a-z]"))
+wordFreq <- sort(table(tolower(tweet_words$word)),decreasing = TRUE)
+wordFreq[1:30]
+```
+Top mentioned words seem to be agreessive and tough. And that may be the reason why so many US residence still against him till now.
+
+As what we have done before, we collect all words from twitter text and analyze the emotion relations:
+```{r}
+nrc <- sentiments %>%
+  filter(lexicon == "nrc") %>%
+  dplyr::select(word, sentiment)
+count<-rep(1,nrow(nrc))
+nrc<-data.frame(nrc,count)
+percent<-tapply(nrc$count,nrc$sentiment,sum)
+
+x <- c('anger','anticipation','disgust','fear','joy','negative','postive','sadness','surprise','trust') 
+y <- percent
+df <- data.frame(x= x, y = y)
+ggplot(data = df, mapping = aes(x = x, y = y,fill=x)) + geom_bar(stat= 'identity')
+```
+From both the plot and the statistics, it's not difficult to find that negative words play the most imporatnt role in all his twitters. Different from speeches, twitters are more reliable and direct which may be more close to the truth. 
+
+
+
