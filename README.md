@@ -8,10 +8,11 @@ This is the first and only *individual* (as opposed to *team*) this semester.
 
 Term: Spring 2017
 
-+ Projec title: Lorem ipsum dolor sit amet
-+ This project is conducted by [your name]
++ Projec title: Trump's twitter tells us the other side of his speeches
++ This project is conducted by [Tongyue Liu]
 
-+ Project summary: [a short summary] Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
++ Project summary: Seeing from the text mining results of the inaugral or nomination speeches from Trump, some of the results just surprised me a little. So I'm thinking of the reasons of that phenomenon. Maybe, that is because the official words or politely thankful words in the speeches affect the main attitude of Trump. 
+So, I got the idea of using data from Twitters. Words on Twitter seem to be more true and reliable when analyzing for Trump.
 
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
 
